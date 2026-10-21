@@ -1,0 +1,18 @@
+services:
+  bot:
+    build: .
+    image: giga-football-bot
+    env_file: .env
+    environment:
+      SUBS_FILE: /data/subscriptions.json
+    volumes:
+      - bot-data:/data
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  bot-data:
