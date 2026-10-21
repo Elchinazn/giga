@@ -22,6 +22,12 @@ COMPETITIONS: dict[str, str] = {
 class Settings:
     telegram_token: str
     football_api_key: str
+    api_football_key: str | None
+    myscore_enabled: bool
+    myscore_feed_url: str | None
+    myscore_fsign: str | None
+    live_poll_seconds: int
+    timezone: str
 
 
 def _load_dotenv(path: str = ".env") -> None:
@@ -47,4 +53,13 @@ def load_settings() -> Settings:
     ]
     if missing:
         raise RuntimeError(f"Не заданы переменные окружения: {', '.join(missing)}")
-    return Settings(telegram_token=token, football_api_key=api_key)
+    return Settings(
+        telegram_token=token,
+        football_api_key=api_key,
+        api_football_key=os.environ.get("API_FOOTBALL_KEY") or None,
+        myscore_enabled=os.environ.get("MYSCORE_ENABLED", "1").lower() not in ("0", "false", "no"),
+        myscore_feed_url=os.environ.get("MYSCORE_FEED_URL") or None,
+        myscore_fsign=os.environ.get("MYSCORE_FSIGN") or None,
+        live_poll_seconds=int(os.environ.get("LIVE_POLL_SECONDS", "120")),
+        timezone=os.environ.get("BOT_TIMEZONE", "Europe/Moscow"),
+    )

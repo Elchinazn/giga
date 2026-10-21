@@ -27,6 +27,12 @@ HELP_TEXT = """<b>⚽ Футбольный аналитик</b>
 /team PL Arsenal — статистика и форма команды
 /analyze 12345 — анализ и прогноз матча по его ID
 
+<b>Live</b>
+/live — матчи в прямом эфире с live-анализом
+/live Англия или /live Arsenal — поиск по лиге/команде
+/live myscore — данные с MyScore
+/subs — матчи, за которыми вы следите (голы, удаления, итог)
+
 <b>Коды лиг:</b> {codes}"""
 
 
@@ -287,4 +293,4 @@ def register(app: Application) -> None:
     app.add_handler(CommandHandler("scorers", scorers_cmd))
     app.add_handler(CommandHandler("team", team_cmd))
     app.add_handler(CommandHandler("analyze", analyze_cmd))
-    app.add_handler(CallbackQueryHandler(on_button))
+    app.add_handler(CallbackQueryHandler(on_button, pattern=r"^(lg|tbl|mt|res|sc|an):"))

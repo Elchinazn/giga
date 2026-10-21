@@ -1,5 +1,4 @@
 import logging
-import os
 from zoneinfo import ZoneInfo
 
 from telegram import BotCommand
@@ -8,8 +7,14 @@ from telegram.ext import Application
 from bot import handlers
 from bot.config import load_settings
 from bot.football_api import FootballAPI
+from bot.live import handlers as live_handlers
+from bot.live import myscore
+from bot.live.api_football import APIFootball
+from bot.live.service import LiveService
 
 COMMANDS = [
+    BotCommand("live", "Матчи в прямом эфире"),
+    BotCommand("subs", "Мои подписки на матчи"),
     BotCommand("leagues", "Список лиг"),
     BotCommand("matches", "Ближайшие матчи и анализ: /matches PL"),
     BotCommand("table", "Турнирная таблица: /table PL"),
@@ -26,6 +31,22 @@ async def post_init(app: Application) -> None:
 
 async def post_shutdown(app: Application) -> None:
     await app.bot_data["api"].close()
+    if "live" in app.bot_data:
+        await app.bot_data["live"].close()
+
+
+def build_live_service(settings) -> LiveService | None:
+    sources = []
+    if settings.api_football_key:
+        sources.append(APIFootball(settings.api_football_key))
+    if settings.myscore_enabled:
+        sources.append(
+            myscore.MyScore(
+                feed_url=settings.myscore_feed_url or myscore.DEFAULT_FEED_URL,
+                fsign=settings.myscore_fsign or myscore.DEFAULT_FSIGN,
+            )
+        )
+    return LiveService(sources) if sources else None
 
 
 def main() -> None:
@@ -41,8 +62,16 @@ def main() -> None:
         .build()
     )
     app.bot_data["api"] = FootballAPI(settings.football_api_key)
-    app.bot_data["tz"] = ZoneInfo(os.environ.get("BOT_TIMEZONE", "Europe/Moscow"))
+    app.bot_data["tz"] = ZoneInfo(settings.timezone)
     handlers.register(app)
+
+    live = build_live_service(settings)
+    if live:
+        app.bot_data["live"] = live
+        live_handlers.register(app, settings.live_poll_seconds)
+        logging.info("Live-источники: %s", ", ".join(live.name(s) for s in live.order))
+    else:
+        logging.warning("Live-режим выключен: задайте API_FOOTBALL_KEY или MYSCORE_ENABLED=1")
 
     logging.info("Бот запущен")
     app.run_polling()
