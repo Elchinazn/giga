@@ -28,6 +28,7 @@ class Settings:
     myscore_fsign: str | None
     live_poll_seconds: int
     timezone: str
+    subs_file: str
 
 
 def _load_dotenv(path: str = ".env") -> None:
@@ -62,4 +63,5 @@ def load_settings() -> Settings:
         myscore_fsign=os.environ.get("MYSCORE_FSIGN") or None,
         live_poll_seconds=int(os.environ.get("LIVE_POLL_SECONDS", "120")),
         timezone=os.environ.get("BOT_TIMEZONE", "Europe/Moscow"),
+        subs_file=os.environ.get("SUBS_FILE", "subscriptions.json"),
     )

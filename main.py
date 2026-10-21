@@ -11,6 +11,7 @@ from bot.live import handlers as live_handlers
 from bot.live import myscore
 from bot.live.api_football import APIFootball
 from bot.live.service import LiveService
+from bot.live.storage import SubscriptionStore
 
 COMMANDS = [
     BotCommand("live", "Матчи в прямом эфире"),
@@ -68,6 +69,10 @@ def main() -> None:
     live = build_live_service(settings)
     if live:
         app.bot_data["live"] = live
+        store = SubscriptionStore(settings.subs_file)
+        app.bot_data["subs_store"] = store
+        app.bot_data["subs"] = store.load()
+        logging.info("Загружено подписок на матчи: %d (%s)", len(app.bot_data["subs"]), store.path)
         live_handlers.register(app, settings.live_poll_seconds)
         logging.info("Live-источники: %s", ", ".join(live.name(s) for s in live.order))
     else:

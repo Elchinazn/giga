@@ -3,6 +3,7 @@
 import logging
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.error import Forbidden
 from telegram.ext import Application, CallbackQueryHandler, CommandHandler, ContextTypes
 
 from ..handlers import _reply
@@ -28,6 +29,16 @@ def _service(context: ContextTypes.DEFAULT_TYPE) -> LiveService:
 def _subs(context: ContextTypes.DEFAULT_TYPE) -> dict:
     # (source, match_id) -> {"chats": set[int], "snapshot": LiveMatch, "misses": int}
     return context.bot_data.setdefault("subs", {})
+
+
+def _save_subs(context: ContextTypes.DEFAULT_TYPE) -> None:
+    store = context.bot_data.get("subs_store")
+    if store is None:
+        return
+    try:
+        store.save(_subs(context))
+    except OSError:
+        log.exception("Не удалось сохранить подписки в %s", store.path)
 
 
 async def _safe(update: Update, coro) -> None:
@@ -103,6 +114,7 @@ async def subscribe(update: Update, context: ContextTypes.DEFAULT_TYPE, source: 
             return
         subs[key] = {"chats": set(), "snapshot": found[0], "misses": 0}
     subs[key]["chats"].add(chat_id)
+    _save_subs(context)
     m = subs[key]["snapshot"]
     await _reply(
         update,
@@ -118,6 +130,7 @@ async def unsubscribe(update: Update, context: ContextTypes.DEFAULT_TYPE, source
         entry["chats"].discard(update.effective_chat.id)
         if not entry["chats"]:
             del subs[(source, match_id)]
+        _save_subs(context)
     await _reply(update, "🔕 Больше не слежу за этим матчем.")
 
 
@@ -203,11 +216,16 @@ async def poll_subscriptions(context: ContextTypes.DEFAULT_TYPE) -> None:
                 for chat_id in list(entry["chats"]):
                     try:
                         await context.bot.send_message(chat_id, text, parse_mode="HTML")
+                    except Forbidden:
+                        # Пользователь заблокировал бота — больше ему не пишем
+                        entry["chats"].discard(chat_id)
                     except Exception:
                         log.exception("Не удалось отправить уведомление в чат %s", chat_id)
             entry["snapshot"] = new
-            if new.status == models.FINISHED:
+            if new.status == models.FINISHED or not entry["chats"]:
                 del subs[key]
+
+    _save_subs(context)
 
 
 def register(app: Application, poll_seconds: int) -> None:
