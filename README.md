@@ -102,6 +102,47 @@ https://dashboard.api-football.com/register и впишите в `API_FOOTBALL_K
 Бесплатный тариф API разрешает 10 запросов в минуту. Ответы кэшируются на 5 минут.
 Анализ одного матча занимает до 5 запросов.
 
+## Запуск на сервере (Docker)
+
+Подойдёт любой VPS с Linux (1 ГБ памяти достаточно), например Ubuntu 22.04/24.04.
+
+1. Установите Docker (один раз):
+
+```bash
+curl -fsSL https://get.docker.com | sh
+```
+
+2. Скачайте код и настройте ключи:
+
+```bash
+git clone https://github.com/Elchinazn/giga.git
+cd giga
+cp .env.example .env
+nano .env        # впишите TELEGRAM_BOT_TOKEN, FOOTBALL_DATA_API_KEY и при желании API_FOOTBALL_KEY
+```
+
+3. Запустите:
+
+```bash
+docker compose up -d --build
+```
+
+Бот работает в фоне и сам перезапускается после сбоя или перезагрузки сервера.
+Подписки на матчи хранятся в томе `bot-data` и не теряются при обновлении.
+
+| Действие | Команда |
+|---|---|
+| Логи | `docker compose logs -f` |
+| Остановить | `docker compose down` |
+| Перезапустить (например, после правки `.env`) | `docker compose up -d` |
+| Обновить до новой версии | `git pull && docker compose up -d --build` |
+
+Без docker compose: `docker build -t giga-football-bot .` и
+`docker run -d --restart unless-stopped --env-file .env -v bot-data:/data giga-football-bot`.
+
+Важно: бот должен быть запущен только в одном месте. Если он одновременно работает
+на компьютере и на сервере, Telegram выдаст ошибку `Conflict: terminated by other getUpdates request`.
+
 ## Тесты
 
 ```bash
